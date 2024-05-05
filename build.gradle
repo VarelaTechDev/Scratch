@@ -1,7 +1,7 @@
 // Define project-wide properties and classpath dependencies for the Gradle build script
 buildscript {
     ext {
-        springBootVersion = '3.2.5'
+        springBootVersion = '2.6.4'
         yubicoVersion = '2.5.0'
         h2Version = '2.2.224'
         lombokVersion = '1.18.24'
@@ -19,7 +19,7 @@ buildscript {
 
 // Apply plugins to the project which add additional tasks and configurations
 plugins {
-    id 'org.springframework.boot' version '3.2.5'
+    id 'org.springframework.boot' version '2.6.4'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
     id 'java' // Java plugin to add Java compilation among other capabilities
 }
@@ -60,6 +60,16 @@ dependencies {
 
     // Spring Boot starter for testing, includes libraries such as JUnit, Hamcrest, Mockito
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+
+    // Apache Commons Codec library provides implementations of common encoders and decoders such as Base64, Hex, Phonetic and URLs.
+    implementation 'commons-codec:commons-codec:1.15'
+
+    // Caffeine is a high performance, near optimal caching library based on Java 8.
+    implementation 'com.github.ben-manes.caffeine:caffeine:3.0.4'
+
+    // jOOQ is a simple way to integrate the SQL language into Java in a way that allows for developers to write safe and quality SQL fast and directly in Java.
+    // You need to specify the version of jOOQ that is compatible with your project.
+    implementation 'org.jooq:jooq:3.15.5'
 }
 
 task printH2Version() {
