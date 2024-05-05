@@ -1,7 +1,7 @@
 // Define project-wide properties and classpath dependencies for the Gradle build script
 buildscript {
     ext {
-        springBootVersion = '3.2.5'
+        springBootVersion = '2.6.4'
         yubicoVersion = '2.5.0'
         h2Version = '2.2.224'
         lombokVersion = '1.18.24'
@@ -19,7 +19,7 @@ buildscript {
 
 // Apply plugins to the project which add additional tasks and configurations
 plugins {
-    id 'org.springframework.boot' version '3.2.5'
+    id 'org.springframework.boot' version '2.6.4'
     id 'io.spring.dependency-management' version '1.0.11.RELEASE'
     id 'java' // Java plugin to add Java compilation among other capabilities
 }
@@ -34,33 +34,26 @@ repositories {
 
 apply plugin: 'java' // Explicitly apply the Java plugin
 
-// Declare project dependencies
 dependencies {
-    // Spring Boot starter for building web, including RESTful, applications using Spring MVC
-    implementation "org.springframework.boot:spring-boot-starter-web"
+    dependencies {
+        implementation "org.springframework.boot:spring-boot-starter-web"
+        implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+        implementation "com.yubico:webauthn-server-core:${yubicoVersion}"
+        implementation "com.yubico:yubico-util:${yubicoVersion}"
+        compileOnly "org.projectlombok:lombok:${lombokVersion}"
+        annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
+        runtimeOnly 'com.h2database:h2'
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+        implementation 'commons-codec:commons-codec:1.15'
+        implementation 'com.github.ben-manes.caffeine:caffeine:3.0.4'
 
-    // Spring Boot starter for using Spring Data JPA with Hibernate
-    implementation "org.springframework.boot:spring-boot-starter-data-jpa"
+        // Java EE Bean Validation API and its Hibernate Validator implementation
+        implementation 'javax.validation:validation-api:2.0.1.Final'
+        implementation 'org.hibernate.validator:hibernate-validator:6.2.0.Final'
+    }
 
-    // Core library for implementing WebAuthn server using Yubico
-    implementation "com.yubico:webauthn-server-core:${yubicoVersion}"
-
-    // Utility library from Yubico for additional functionalities
-    implementation "com.yubico:yubico-util:${yubicoVersion}"
-
-    // Lombok library to automatically plug into your editor and build tools, spicing up your java
-    compileOnly "org.projectlombok:lombok:${lombokVersion}"
-
-    // Configurations for annotation processing by Lombok during compilation
-    annotationProcessor "org.projectlombok:lombok:${lombokVersion}"
-
-    // H2 database, a Java SQL database. Included only at runtime, not required during the compile phase
-    // runtimeOnly "com.h2database:h2:${h2Version}"
-    runtimeOnly 'com.h2database:h2'
-
-    // Spring Boot starter for testing, includes libraries such as JUnit, Hamcrest, Mockito
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
 }
+
 
 task printH2Version() {
     doLast {
