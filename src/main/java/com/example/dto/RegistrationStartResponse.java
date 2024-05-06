@@ -30,6 +30,13 @@ public class RegistrationStartResponse {
     this.publicKeyCredentialCreationOptions = publicKeyCredentialCreationOptions;
   }
 
+  public RegistrationStartResponse(String registrationId, PublicKeyCredentialCreationOptions publicKeyCredentialCreationOptions) {
+    this.mode = null;
+    this.status = Status.OK;
+    this.registrationId = registrationId;
+    this.publicKeyCredentialCreationOptions = publicKeyCredentialCreationOptions;
+  }
+
   public RegistrationStartResponse(Status status) {
     this.mode = null;
     this.status = status;

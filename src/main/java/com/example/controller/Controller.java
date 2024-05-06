@@ -1,11 +1,13 @@
 package com.example.controller;
 
 import com.example.dto.AssertionStartResponse;
+import com.example.dto.RegistrationFinishRequest;
 import com.example.dto.RegistrationStartResponse;
 import com.example.entity.AppUser;
 import com.example.exception.ResponseExpiredException;
 import com.example.exception.UsernameNotFoundException;
 import com.example.repository.AppUserRepository;
+import com.example.repository.CredentialsRepository;
 import com.example.repository.JpaRepositoryCredential;
 import com.example.utils.BytesUtil;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -17,13 +19,16 @@ import com.yubico.webauthn.RegistrationResult;
 import com.yubico.webauthn.RelyingParty;
 import com.yubico.webauthn.StartRegistrationOptions;
 import com.yubico.webauthn.data.AuthenticatorSelectionCriteria;
+import com.yubico.webauthn.data.AuthenticatorTransport;
 import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.PublicKeyCredentialCreationOptions;
 import com.yubico.webauthn.data.ResidentKeyRequirement;
 import com.yubico.webauthn.data.UserIdentity;
 import com.yubico.webauthn.data.UserVerificationRequirement;
+import com.yubico.webauthn.exception.RegistrationFailedException;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -39,6 +44,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
+
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -53,10 +60,19 @@ public class Controller {
     private AppUserRepository appUserRepository;
 
     @Autowired
+    private CredentialsRepository credentialsRepository;
+
+    @Autowired
     private RelyingParty relyingParty;
 
     @Autowired
     private JpaRepositoryCredential jpaRepositoryCredential;
+
+    private final Cache<String, RegistrationStartResponse> registrationCache;
+
+    private final Cache<String, AssertionStartResponse> assertionCache;
+
+
 
 
     @GetMapping("/printChallengeCache")
@@ -70,14 +86,19 @@ public class Controller {
                 .expireAfterWrite(10, TimeUnit.MINUTES) // Adjust expiry based on expected registration time
                 .maximumSize(10000) // Adjust based on expected concurrent registrations
                 .build();
+
+        this.registrationCache = Caffeine.newBuilder().maximumSize(1000)
+                .expireAfterAccess(5, TimeUnit.MINUTES).build();
+        this.assertionCache = Caffeine.newBuilder().maximumSize(1000)
+                .expireAfterAccess(5, TimeUnit.MINUTES).build();
     }
     // createUser?username=exampleUser
     @PostMapping("/createUser")
-    public AppUser createUser(@RequestParam String username) {
-        log.info("Creating user with username: {}", username);
+    public ResponseEntity<AppUser> createUser(@RequestParam String username) {
         AppUser user = new AppUser();
         user.setUsername(username);
-        return appUserRepository.save(user);
+        AppUser savedUser = appUserRepository.save(user);
+        return ResponseEntity.ok(savedUser);
     }
 
     /*
@@ -90,7 +111,8 @@ public class Controller {
     // /startRegistration?username=exampleUser.
 
     @PostMapping("/startRegistration")
-    public PublicKeyCredentialCreationOptions startRegistration(@RequestParam String username) {
+    public RegistrationStartResponse startRegistration(@RequestParam String username) {
+        log.info("Start registration for username: {}", username);
         AppUser user = appUserRepository.findByUsername(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
 
@@ -110,10 +132,20 @@ public class Controller {
                 .user(userIdentity)
                 .build());
 
+        byte[] registrationId = new byte[16];
+
+        RegistrationStartResponse startResponse = new RegistrationStartResponse(
+                Base64.getEncoder().encodeToString(registrationId),
+                options
+        );
+
         // Store the challenge in the cache with username as the key
         challengeCache.put(username, options.getChallenge().getBase64Url());
 
-        return options;
+        log.info("Registration started for username: {}, challenge: {}", username, options.getChallenge().getBase64Url());
+
+        //return options;
+        return startResponse;
     }
 
 
@@ -127,6 +159,43 @@ public class Controller {
 //    public RegistrationResult finishRegistration(@RequestBody FinishRegistrationRequest finishRequest) {
 //        return null;
 //    }
+
+    @PostMapping("/registration/finish")
+    public String registrationFinish(@RequestBody RegistrationFinishRequest finishRequest) {
+        RegistrationStartResponse startResponse = registrationCache.getIfPresent(finishRequest.getRegistrationId());
+        registrationCache.invalidate(finishRequest.getRegistrationId());
+
+        if (startResponse == null) {
+            throw new IllegalStateException("Registration session expired or invalid");
+        }
+
+        try {
+            RegistrationResult registrationResult = relyingParty.finishRegistration(FinishRegistrationOptions.builder()
+                    .request(startResponse.getPublicKeyCredentialCreationOptions())
+                    .response(finishRequest.getCredential())
+                    .build());
+
+            // Example of handling user data and storing credentials
+            UserIdentity userIdentity = startResponse.getPublicKeyCredentialCreationOptions().getUser();
+            long userId = BytesUtil.bytesToLong(userIdentity.getId().getBytes());
+
+            // Handle transport conversion if applicable
+            String transports = registrationResult.getKeyId().getTransports().map(ts -> ts.stream()
+                            .map(AuthenticatorTransport::getId)
+                            .collect(Collectors.joining(",")))
+                    .orElse(null);
+
+            // Store credential data
+
+            jpaRepositoryCredential.addCredential(userId,
+                    registrationResult.getKeyId().getId().getBytes(),
+                    registrationResult.getPublicKeyCose().getBytes(), transports,
+                    registrationResult.getSignatureCount());
+            return "Registration successful";
+        } catch (RegistrationFailedException e) {
+            throw new RuntimeException("Registration failed", e);
+        }
+    }
 
 
     /*

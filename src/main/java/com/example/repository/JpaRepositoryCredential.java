@@ -23,6 +23,20 @@ public class JpaRepositoryCredential implements CredentialRepository {
     private final AppUserRepository appUserRepository;
     private final CredentialsRepository credentialsRepository;
 
+    public void addCredential(long userId, byte[] credentialId, byte[] publicKeyCose, String transports, long counter) {
+        AppUser user = appUserRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("User not found with ID: " + userId));
+
+        Credentials credentials = new Credentials();
+        credentials.setId(UUID.nameUUIDFromBytes(credentialId)); // Assuming credential ID is unique and can be used as UUID
+        credentials.setAppUser(user);
+        credentials.setPublicKeyCose(publicKeyCose);
+        credentials.setTransports(transports);
+        credentials.setCount(counter);
+
+        credentialsRepository.save(credentials);
+    }
+
     @Override
     public Set<PublicKeyCredentialDescriptor> getCredentialIdsForUsername(String username) {
         return appUserRepository.findByUsername(username)
