@@ -26,5 +26,4 @@ public class RegistrationFinishRequest {
   public PublicKeyCredential<AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs> getCredential() {
     return this.credential;
   }
-
 }

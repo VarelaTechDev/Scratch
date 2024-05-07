@@ -8,29 +8,71 @@ import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
+import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
 import java.util.UUID;
 
-@Data
 @Entity
+@Data
 @Table(name = "credentials")
 public class Credentials {
-
     @Id
-    @GeneratedValue(generator = "UUID")
-    private UUID id;
+    @Column(name = "id", nullable = false, columnDefinition = "VARBINARY(128)")
+    private byte[] id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "app_user_id", nullable = false)
-    private AppUser appUser;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @Column(nullable = false)
+    @Column(name = "count", nullable = false)
     private Long count;
 
-    @Column(nullable = false)
+    @Lob
+    @Column(name = "public_key_cose", nullable = false)
     private byte[] publicKeyCose;
 
-    @Column
+    @Column(name = "transports", length = 255)
     private String transports;
+
+    // Getters and setters
+    public byte[] getId() {
+        return id;
+    }
+
+    public void setId(byte[] id) {
+        this.id = id;
+    }
+
+    public User getUser() {
+        return user;
+    }
+
+    public void setUser(User user) {
+        this.user = user;
+    }
+
+    public Long getCount() {
+        return count;
+    }
+
+    public void setCount(Long count) {
+        this.count = count;
+    }
+
+    public byte[] getPublicKeyCose() {
+        return publicKeyCose;
+    }
+
+    public void setPublicKeyCose(byte[] publicKeyCose) {
+        this.publicKeyCose = publicKeyCose;
+    }
+
+    public String getTransports() {
+        return transports;
+    }
+
+    public void setTransports(String transports) {
+        this.transports = transports;
+    }
 }

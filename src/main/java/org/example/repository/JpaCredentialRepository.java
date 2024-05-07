@@ -1,22 +1,17 @@
-package com.example.repository;
+package org.example.repository;
 
-import com.example.entity.Credentials;
-import com.example.exception.UsernameNotFoundException;
-import com.example.repository.CredentialsRepository;
-import com.yubico.webauthn.CredentialRepository;
+import com.yubico.webauthn.RegisteredCredential;
 import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.PublicKeyCredentialDescriptor;
-import com.yubico.webauthn.RegisteredCredential;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Repository;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+import com.yubico.webauthn.CredentialRepository;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
-@Repository
-@RequiredArgsConstructor
-public class JpaRepositoryCredential implements CredentialRepository {
+// TODO Implement later
+@Component
+public class JpaCredentialRepository implements CredentialRepository {
 
     @Override
     public Set<PublicKeyCredentialDescriptor> getCredentialIdsForUsername(String username) {

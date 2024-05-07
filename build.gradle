@@ -50,6 +50,15 @@ dependencies {
         // Java EE Bean Validation API and its Hibernate Validator implementation
         implementation 'javax.validation:validation-api:2.0.1.Final'
         implementation 'org.hibernate.validator:hibernate-validator:6.2.0.Final'
+        implementation 'com.upokecenter:cbor:4.0.0'
+
+        implementation 'mysql:mysql-connector-java:8.0.29'
+
+        implementation 'io.jsonwebtoken:jjwt-api:0.11.2'
+        runtimeOnly 'io.jsonwebtoken:jjwt-impl:0.11.2'
+        runtimeOnly 'io.jsonwebtoken:jjwt-jackson:0.11.2'
+
+        implementation 'jakarta.validation:jakarta.validation-api:3.0.0'
     }
 
 }
