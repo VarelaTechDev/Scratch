@@ -2,8 +2,10 @@ package com.example.controller;
 
 import com.example.dto.RegistrationFinishRequest;
 import com.example.dto.RegistrationStartResponse;
+import com.example.entity.Credentials;
 import com.example.entity.User;
 import com.example.exception.UsernameNotFoundException;
+import com.example.repository.JpaRepositoryCredential;
 import com.example.repository.UserRepository;
 import com.example.utils.BytesUtil;
 import com.github.benmanes.caffeine.cache.Cache;
@@ -12,35 +14,38 @@ import com.yubico.webauthn.FinishRegistrationOptions;
 import com.yubico.webauthn.RegistrationResult;
 import com.yubico.webauthn.RelyingParty;
 import com.yubico.webauthn.StartRegistrationOptions;
-import com.yubico.webauthn.data.AuthenticatorSelectionCriteria;
+import com.yubico.webauthn.data.AuthenticatorTransport;
 import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.PublicKeyCredentialCreationOptions;
-import com.yubico.webauthn.data.ResidentKeyRequirement;
 import com.yubico.webauthn.data.UserIdentity;
-import com.yubico.webauthn.data.UserVerificationRequirement;
 import org.slf4j.Marker;
 import org.slf4j.MarkerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import java.nio.charset.StandardCharsets;
+
 import java.security.SecureRandom;
 import java.util.Base64;
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.Collections;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
+import java.util.SortedSet;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @RestController
 @Validated
 public class Controller {
+    private final JpaRepositoryCredential jpaRepositoryCredential;
     @Autowired
     private UserRepository userRepository;
 
@@ -52,7 +57,8 @@ public class Controller {
     private final Cache<String, RegistrationStartResponse> registrationCache;
 
 
-    public Controller() {
+    public Controller(JpaRepositoryCredential jpaRepositoryCredential) {
+        this.jpaRepositoryCredential = jpaRepositoryCredential;
         this.random = new SecureRandom();
         this.registrationCache = Caffeine.newBuilder().maximumSize(1000)
                 .expireAfterAccess(5, TimeUnit.MINUTES).build();
@@ -110,6 +116,29 @@ public class Controller {
         return startResponse;
     }
 
+    @GetMapping("/{userId}/credentials")
+    public ResponseEntity<List<Credentials>> getAllCredentialsForUser(@PathVariable Long userId) {
+        List<Credentials> credentials = jpaRepositoryCredential.getCredentialsByUserId(userId);
+        if (!credentials.isEmpty()) {
+            return ResponseEntity.ok(credentials);
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
+    }
+    @GetMapping("/publicKeyCose/{credentialId}")
+    public ResponseEntity<byte[]> getPublicKeyCose(@PathVariable String credentialId) {
+        try {
+            byte[] decodedId = Base64.getDecoder().decode(credentialId);
+            byte[] publicKeyCose = jpaRepositoryCredential.getPublicKeyCose(decodedId);
+            if (publicKeyCose != null) {
+                return ResponseEntity.ok().body(publicKeyCose);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+            }
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(null);
+        }
+    }
 
     @GetMapping("/printRegistrationCache")
     public Map<String, RegistrationStartResponse> printRegistrationCache() {
@@ -132,6 +161,19 @@ public class Controller {
 
             UserIdentity userIdentity = startResponse.getPublicKeyCredentialCreationOptions()
                     .getUser();
+
+            long userId = BytesUtil.bytesToLong(userIdentity.getId().getBytes());
+            String transports = null;
+
+            Optional<SortedSet<AuthenticatorTransport>> transportOptional = registrationResult
+                    .getKeyId().getTransports();
+
+            this.jpaRepositoryCredential.addCredential(userId,
+                    registrationResult.getKeyId().getId().getBytes(),
+                    registrationResult.getPublicKeyCose().getBytes(),
+                    transports,
+                    registrationResult.getSignatureCount());
+
         } catch (Exception e) {
             return e.getMessage();
         }

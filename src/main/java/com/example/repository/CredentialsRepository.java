@@ -1,6 +1,7 @@
 package com.example.repository;
 
 import com.example.entity.Credentials;
+import com.example.entity.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;
@@ -11,5 +12,7 @@ public interface CredentialsRepository extends JpaRepository<Credentials, byte[]
     List<Credentials> findByPublicKeyCose(byte[] publicKeyCose); // Find credentials by public key COSE
     List<Credentials> findByTransportsContaining(String transport);
     List<Credentials> findByCountAndTransportsContaining(Long count, String transport); // Find credentials that include specific transport methods
+
+    List<Credentials> findAllByUser(Optional<User> user);
 }
 
