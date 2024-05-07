@@ -20,12 +20,15 @@ public class Application {
                                      AppProperties appProperties) {
 
         RelyingPartyIdentity rpIdentity = RelyingPartyIdentity.builder()
-                .id(appProperties.getRelyingPartyId()).name(appProperties.getRelyingPartyName())
+                .id(appProperties.getRelyingPartyId())
+                .name(appProperties.getRelyingPartyName())
                 .build();
 
-        return RelyingParty.builder().identity(rpIdentity)
+        return RelyingParty.builder()
+                .identity(rpIdentity)
                 .credentialRepository(jpaRepositoryCredential)
-                .origins(appProperties.getRelyingPartyOrigins()).build();
+                .origins(appProperties.getRelyingPartyOrigins())
+                .build();
     }
 
 }

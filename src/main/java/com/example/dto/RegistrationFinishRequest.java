@@ -13,8 +13,10 @@ public class RegistrationFinishRequest {
   private final PublicKeyCredential<AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs> credential;
 
   @JsonCreator
-  public RegistrationFinishRequest(@JsonProperty("registrationId") String registrationId,
-      @JsonProperty("credential") PublicKeyCredential<AuthenticatorAttestationResponse, ClientRegistrationExtensionOutputs> credential) {
+  public RegistrationFinishRequest(
+          @JsonProperty("registrationId") String registrationId,
+          @JsonProperty("credential") PublicKeyCredential<AuthenticatorAttestationResponse,
+          ClientRegistrationExtensionOutputs> credential) {
     this.registrationId = registrationId;
     this.credential = credential;
   }

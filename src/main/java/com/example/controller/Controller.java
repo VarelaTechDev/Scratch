@@ -1,5 +1,6 @@
 package com.example.controller;
 
+import com.example.dto.RegistrationFinishRequest;
 import com.example.dto.RegistrationStartResponse;
 import com.example.entity.User;
 import com.example.exception.UsernameNotFoundException;
@@ -7,6 +8,8 @@ import com.example.repository.UserRepository;
 import com.example.utils.BytesUtil;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import com.yubico.webauthn.FinishRegistrationOptions;
+import com.yubico.webauthn.RegistrationResult;
 import com.yubico.webauthn.RelyingParty;
 import com.yubico.webauthn.StartRegistrationOptions;
 import com.yubico.webauthn.data.AuthenticatorSelectionCriteria;
@@ -22,6 +25,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import java.nio.charset.StandardCharsets;
@@ -83,20 +87,23 @@ public class Controller {
                 .orElseThrow(() -> new UsernameNotFoundException("User not found with username: " + username));
 
 
-        PublicKeyCredentialCreationOptions credentialCreation = this.relyingParty.startRegistration(StartRegistrationOptions.builder()
-                .user(UserIdentity.builder()
-                        .name(username)
-                        .displayName(username)
-                        .id(new ByteArray(BytesUtil.longToBytes(user.getUserId()))).build())
-                .authenticatorSelection(AuthenticatorSelectionCriteria.builder()
-                        .residentKey(ResidentKeyRequirement.REQUIRED)
-                        .userVerification(UserVerificationRequirement.PREFERRED).build())
+
+        PublicKeyCredentialCreationOptions credentialCreation = this.relyingParty
+                .startRegistration(StartRegistrationOptions.builder()
+                    .user(UserIdentity.builder()
+                        .name(user.getUsername())
+                        .displayName(user.getUsername())
+                        .id(new ByteArray(BytesUtil.longToBytes(user.getUserId())))
+                    .build())
                 .build());
 
         byte[] registrationId = new byte[16];
         this.random.nextBytes(registrationId);
+
         RegistrationStartResponse startResponse = new RegistrationStartResponse(
-                Base64.getEncoder().encodeToString(registrationId), credentialCreation);
+                Base64.getEncoder().encodeToString(registrationId),
+                credentialCreation
+        );
 
         this.registrationCache.put(startResponse.getRegistrationId(), startResponse);
 
@@ -108,6 +115,31 @@ public class Controller {
     public Map<String, RegistrationStartResponse> printRegistrationCache() {
         return registrationCache.asMap();
     }
+
+    @PostMapping("/registration/finish")
+    public String registrationFinish(@RequestBody RegistrationFinishRequest finishRequest) {
+
+        System.out.println(finishRequest);
+        RegistrationStartResponse startResponse = this.registrationCache
+                .getIfPresent(finishRequest.getRegistrationId());
+        this.registrationCache.invalidate(finishRequest.getRegistrationId());
+
+        try {
+            RegistrationResult registrationResult = this.relyingParty
+                    .finishRegistration(FinishRegistrationOptions.builder()
+                            .request(startResponse.getPublicKeyCredentialCreationOptions())
+                            .response(finishRequest.getCredential()).build());
+
+            UserIdentity userIdentity = startResponse.getPublicKeyCredentialCreationOptions()
+                    .getUser();
+        } catch (Exception e) {
+            return e.getMessage();
+        }
+
+
+        return "success";
+    }
+
 
 
 //    @GetMapping("/printChallengeCache")
