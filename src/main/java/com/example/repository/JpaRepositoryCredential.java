@@ -2,6 +2,8 @@ package com.example.repository;
 
 import com.example.entity.Credentials;
 import com.example.entity.User;
+import com.example.utils.ByteArrayAttributeConverter;
+import com.example.utils.BytesUtil;
 import com.yubico.webauthn.CredentialRepository;
 import com.yubico.webauthn.data.ByteArray;
 import com.yubico.webauthn.data.PublicKeyCredentialDescriptor;
@@ -33,52 +35,29 @@ public class JpaRepositoryCredential implements CredentialRepository {
     @Autowired
     private CredentialsRepository credentialsRepository;
 
-
-    public List<Credentials> getCredentialsByUserId(Long userId) {
-        Optional<User> user = userRepository.findById(userId);
-        if (user.isPresent()) {
-            return credentialsRepository.findByUser_UserId(userId);
-        }
-        return List.of(); // Return an empty list if the user does not exist
-    }
-
     @Transactional
-    public void addCredential(long userId, byte[] credentialId, byte[] publicKeyCose, String transports, long counter) {
+    public void addCredential(long userId, byte[] credentialIdBytes, byte[] publicKeyCoseBytes, String transports, long counter) {
+        // Find the user by ID
         Optional<User> userOptional = userRepository.findById(userId);
         if (!userOptional.isPresent()) {
             throw new RuntimeException("User not found with ID: " + userId);
         }
         User user = userOptional.get();
 
+        // Create a new Credentials instance
         Credentials credentials = new Credentials();
-        credentials.setId(credentialId);
-        credentials.setUser(user);
-        credentials.setPublicKeyCose(publicKeyCose);
+        credentials.setUser(user);  // Set the user, not the user ID
+        credentials.setCredentialId(BytesUtil.bytesToByteArray(credentialIdBytes));  // Convert byte[] to ByteArray
+        credentials.setPublicKeyCose(BytesUtil.bytesToByteArray(publicKeyCoseBytes));  // Convert byte[] to ByteArray
         credentials.setTransports(transports);
         credentials.setCount(counter);
 
+        // Save the credentials
         credentialsRepository.save(credentials);
     }
-
-    public byte[] getPublicKeyCose(byte[] credentialId) {
-        Optional<Credentials> credentials = credentialsRepository.findById(credentialId);
-        return credentials.map(Credentials::getPublicKeyCose).orElse(null);
-    }
-
     @Override
     public Set<PublicKeyCredentialDescriptor> getCredentialIdsForUsername(String username) {
-        Optional<User> userOptional = userRepository.findByUsername(username);
-        if (userOptional.isEmpty()) {
-            return Set.of(); // Return an empty set if the user does not exist
-        }
-
-        User user = userOptional.get();
-        List<Credentials> credentials = credentialsRepository.findByUser_UserId(user.getUserId());
-        return credentials.stream()
-                .map(credential -> PublicKeyCredentialDescriptor.builder()
-                        .id(new ByteArray(credential.getId()))
-                        .build())
-                .collect(Collectors.toSet());
+        return new HashSet<>();
     }
 
     @Override

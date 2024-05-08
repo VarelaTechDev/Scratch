@@ -1,5 +1,7 @@
 package com.example.utils;
 
+import com.yubico.webauthn.data.ByteArray;
+
 public class BytesUtil {
 
   public static byte[] longToBytes(long longValue) {
@@ -19,6 +21,16 @@ public class BytesUtil {
       result |= b[i] & 0xFF;
     }
     return result;
+  }
+
+  // Convert byte array to ByteArray
+  public static ByteArray bytesToByteArray(byte[] bytes) {
+    return new ByteArray(bytes);
+  }
+
+  // Convert ByteArray to byte array
+  public static byte[] byteArrayToBytes(ByteArray byteArray) {
+    return byteArray.getBytes();
   }
 
 }

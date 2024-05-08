@@ -1,27 +1,32 @@
 package com.example.entity;
 
+import com.example.utils.ByteArrayAttributeConverter;
+import com.yubico.webauthn.RegistrationResult;
+import com.yubico.webauthn.data.AttestedCredentialData;
+import com.yubico.webauthn.data.AuthenticatorAttestationResponse;
+import com.yubico.webauthn.data.ByteArray;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 import javax.persistence.Column;
+import javax.persistence.Convert;
 import javax.persistence.Entity;
-import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.Lob;
 import javax.persistence.ManyToOne;
 import javax.persistence.Table;
-import java.util.UUID;
 
-@Entity
 @Data
+@Entity
 @Table(name = "credentials")
 public class Credentials {
     @Id
-    @Column(name = "id", nullable = false, columnDefinition = "VARBINARY(128)")
-    private byte[] id;
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "id")
+    private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
@@ -29,50 +34,15 @@ public class Credentials {
     private Long count;
 
     @Lob
-    @Column(name = "public_key_cose", nullable = false)
-    private byte[] publicKeyCose;
+    @Convert(converter = ByteArrayAttributeConverter.class)
+    @Column(name = "credentialId", nullable = false, columnDefinition = "VARBINARY(128)")
+    private ByteArray credentialId;
 
-    @Column(name = "transports", length = 255)
+    @Lob
+    @Convert(converter = ByteArrayAttributeConverter.class)
+    @Column(name = "public_key_cose", nullable = false, columnDefinition = "VARBINARY(500)")
+    private ByteArray publicKeyCose;
+
+    @Column(name = "transports")
     private String transports;
-
-    // Getters and setters
-    public byte[] getId() {
-        return id;
-    }
-
-    public void setId(byte[] id) {
-        this.id = id;
-    }
-
-    public User getUser() {
-        return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
-    }
-
-    public Long getCount() {
-        return count;
-    }
-
-    public void setCount(Long count) {
-        this.count = count;
-    }
-
-    public byte[] getPublicKeyCose() {
-        return publicKeyCose;
-    }
-
-    public void setPublicKeyCose(byte[] publicKeyCose) {
-        this.publicKeyCose = publicKeyCose;
-    }
-
-    public String getTransports() {
-        return transports;
-    }
-
-    public void setTransports(String transports) {
-        this.transports = transports;
-    }
 }
